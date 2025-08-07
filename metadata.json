@@ -1,0 +1,6 @@
+{
+  "name": "LingoRPG English AI",
+  "description": "An interactive text-based RPG for learning English. The AI acts as a Dungeon Master, guides you through quests, and corrects your grammar in real-time.",
+  "requestFramePermissions": [],
+  "prompt": ""
+}
