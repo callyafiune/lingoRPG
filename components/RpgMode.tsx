@@ -9,6 +9,7 @@ import { SendHorizonal, Shield, Play, Pause, SkipBack, SkipForward, Users } from
 import { TranslationPopup } from './TranslationPopup';
 import { SpeechHighlighting } from './SpeechHighlighting';
 import { useVocabulary } from '../contexts/VocabularyContext';
+import { parseResponse } from '../utils/parseResponse';
 import type { Chat } from '@google/genai';
 
 interface Message {
@@ -333,17 +334,6 @@ export const RpgMode: React.FC = () => {
     setIsLoading(false);
   };
   
-  const parseResponse = (responseText: string): { correction?: string, story: string } => {
-      const correctionPrefix = "Correction: ";
-      const lines = responseText.split('\n');
-      if (lines.length > 0 && lines[0].startsWith(correctionPrefix)) {
-          const correction = lines[0].substring(correctionPrefix.length).trim().slice(1, -1);
-          const story = lines.slice(1).join('\n').trim();
-          return { correction, story };
-      }
-      return { story: responseText };
-  };
-
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!userInput.trim() || isLoading || !chat) return;
