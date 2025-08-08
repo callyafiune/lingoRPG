@@ -1,6 +1,7 @@
 
 
 
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createRpgChat } from '../services/geminiService';
 import { LoadingSpinner } from './LoadingSpinner';
@@ -494,18 +495,19 @@ export const RpgMode: React.FC = () => {
         {difficulty && (
             <div className="w-full max-w-md animate-fade-in-up text-center">
                 <p className="text-slate-400 mb-4">Next, select the number of players.</p>
-                <div className="flex justify-center gap-3 mb-6">
+                <div className="flex justify-center gap-4 mb-6">
                     {[1, 2, 3, 4].map(num => (
                         <button
                             key={num}
                             onClick={() => setNumberOfPlayers(num)}
-                            className={`px-4 py-2 rounded-lg font-semibold transition-colors w-16 ${
+                            className={`flex flex-col items-center justify-center p-2 rounded-lg font-semibold transition-all w-24 h-24 text-center ${
                                 numberOfPlayers === num
-                                ? 'bg-indigo-600 text-white shadow-lg'
+                                ? 'bg-indigo-600 text-white shadow-lg scale-105'
                                 : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
                             }`}
                         >
-                            {num} Player{num > 1 ? 's' : ''}
+                            <Users className="w-8 h-8 mb-1" />
+                            <span className="text-sm">{num} Player{num > 1 ? 's' : ''}</span>
                         </button>
                     ))}
                 </div>
