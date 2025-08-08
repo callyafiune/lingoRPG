@@ -10,6 +10,7 @@ import { TranslationPopup } from './TranslationPopup';
 import { SpeechHighlighting } from './SpeechHighlighting';
 import { useVocabulary } from '../contexts/VocabularyContext';
 import type { Chat } from '@google/genai';
+import { parseResponse } from '../services/parseResponse';
 
 interface Message {
   id: string;
@@ -333,23 +334,6 @@ export const RpgMode: React.FC = () => {
     setIsLoading(false);
   };
   
-  const parseResponse = (responseText: string): { correction?: string, story: string } => {
-      const correctionPrefix = "Correction: ";
-      const lines = responseText.split('\n');
-      if (lines.length > 0 && lines[0].startsWith(correctionPrefix)) {
-          let correction = lines[0].substring(correctionPrefix.length).trim();
-          if (
-            (correction.startsWith('"') && correction.endsWith('"')) ||
-            (correction.startsWith("'") && correction.endsWith("'"))
-          ) {
-              correction = correction.slice(1, -1);
-          }
-          const story = lines.slice(1).join('\n').trim();
-          return { correction, story };
-      }
-      return { story: responseText };
-  };
-
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!userInput.trim() || isLoading || !chat) return;
