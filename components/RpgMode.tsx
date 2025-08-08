@@ -5,7 +5,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createRpgChat } from '../services/geminiService';
 import { LoadingSpinner } from './LoadingSpinner';
-import { SendHorizonal, Shield, Play, Pause, SkipBack, SkipForward, Users } from './Icons';
+import { SendHorizontal, Shield, Play, Pause, SkipBack, SkipForward, Users } from './Icons';
 import { TranslationPopup } from './TranslationPopup';
 import { SpeechHighlighting } from './SpeechHighlighting';
 import { useVocabulary } from '../contexts/VocabularyContext';
@@ -617,7 +617,7 @@ export const RpgMode: React.FC = () => {
                     disabled={isLoading || !userInput.trim()}
                     aria-label="Send action"
                 >
-                    <SendHorizonal className="w-5 h-5" />
+                    <SendHorizontal className="w-5 h-5" />
                 </button>
             </div>
         </form>
