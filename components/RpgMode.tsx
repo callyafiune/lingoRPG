@@ -337,7 +337,13 @@ export const RpgMode: React.FC = () => {
       const correctionPrefix = "Correction: ";
       const lines = responseText.split('\n');
       if (lines.length > 0 && lines[0].startsWith(correctionPrefix)) {
-          const correction = lines[0].substring(correctionPrefix.length).trim().slice(1, -1);
+          let correction = lines[0].substring(correctionPrefix.length).trim();
+          if (
+            (correction.startsWith('"') && correction.endsWith('"')) ||
+            (correction.startsWith("'") && correction.endsWith("'"))
+          ) {
+              correction = correction.slice(1, -1);
+          }
           const story = lines.slice(1).join('\n').trim();
           return { correction, story };
       }
