@@ -11,6 +11,7 @@ interface VocabularyContextType {
   vocabWords: VocabWord[];
   addVocabWord: (word: string) => Promise<void>;
   removeVocabWord: (id: string) => void;
+  removeAllVocab: () => void;
   isLoading: boolean;
 }
 
@@ -63,8 +64,12 @@ export const VocabularyProvider = ({ children }: { children: ReactNode }) => {
     setVocabWords(prev => prev.filter(word => word.id !== id));
   };
 
+  const removeAllVocab = useCallback(() => {
+    setVocabWords([]);
+  }, []);
+
   return (
-    <VocabularyContext.Provider value={{ vocabWords, addVocabWord, removeVocabWord, isLoading }}>
+    <VocabularyContext.Provider value={{ vocabWords, addVocabWord, removeVocabWord, removeAllVocab, isLoading }}>
       {children}
     </VocabularyContext.Provider>
   );

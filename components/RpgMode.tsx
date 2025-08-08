@@ -1,7 +1,10 @@
+
+
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createRpgChat } from '../services/geminiService';
 import { LoadingSpinner } from './LoadingSpinner';
-import { SendHorizonal, Shield, Play, Pause, SkipBack, SkipForward } from './Icons';
+import { SendHorizonal, Shield, Play, Pause, SkipBack, SkipForward, Users } from './Icons';
 import { TranslationPopup } from './TranslationPopup';
 import { SpeechHighlighting } from './SpeechHighlighting';
 import { useVocabulary } from '../contexts/VocabularyContext';
@@ -12,11 +15,17 @@ interface Message {
   sender: 'user' | 'ai';
   text: string;
   correction?: string;
+  playerIndex?: number;
 }
+
+type Difficulty = 'basic' | 'intermediate' | 'advanced';
 
 interface SavedRpgState {
   theme: string;
   messages: Message[];
+  difficulty: Difficulty;
+  numberOfPlayers: number;
+  currentPlayerIndex: number;
 }
 
 type SpeakingState = 'idle' | 'playing' | 'paused';
@@ -27,6 +36,10 @@ interface SelectionInfo {
 
 export const RpgMode: React.FC = () => {
   const [theme, setTheme] = useState<string>('');
+  const [difficulty, setDifficulty] = useState<Difficulty | null>(null);
+  const [numberOfPlayers, setNumberOfPlayers] = useState<number | null>(null);
+  const [currentPlayerIndex, setCurrentPlayerIndex] = useState<number>(0);
+
   const [chat, setChat] = useState<Chat | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [userInput, setUserInput] = useState<string>('');
@@ -68,21 +81,34 @@ export const RpgMode: React.FC = () => {
   useEffect(() => {
     const savedData = localStorage.getItem('rpgGameState');
     if (savedData) {
-        const parsedData = JSON.parse(savedData) as SavedRpgState;
-        if (parsedData.messages.length > 0) {
-            setSavedGameState(parsedData);
-            setShowContinueScreen(true);
+        try {
+            const parsedData = JSON.parse(savedData) as SavedRpgState;
+            if (parsedData.messages.length > 0 && parsedData.difficulty && parsedData.numberOfPlayers) {
+                setSavedGameState(parsedData);
+                setShowContinueScreen(true);
+            } else {
+                localStorage.removeItem('rpgGameState');
+            }
+        } catch (error) {
+            console.error("Failed to parse saved game state:", error);
+            localStorage.removeItem('rpgGameState');
         }
     }
   }, []);
 
   // Save game state whenever messages change
   useEffect(() => {
-    if (isGameStarted && messages.length > 0) {
-        const stateToSave: SavedRpgState = { theme, messages };
+    if (isGameStarted && messages.length > 0 && theme && difficulty && numberOfPlayers !== null) {
+        const stateToSave: SavedRpgState = { 
+            theme, 
+            messages, 
+            difficulty,
+            numberOfPlayers,
+            currentPlayerIndex
+        };
         localStorage.setItem('rpgGameState', JSON.stringify(stateToSave));
     }
-  }, [messages, theme, isGameStarted]);
+  }, [messages, theme, difficulty, isGameStarted, numberOfPlayers, currentPlayerIndex]);
 
   // Handle drag-to-select for translation
   useEffect(() => {
@@ -141,7 +167,6 @@ export const RpgMode: React.FC = () => {
         speechSynthesis.cancel();
     }
     setSpeakingState('idle');
-    // We keep the currentSentenceIndex to keep the highlight on the last played sentence.
     if (utteranceRef.current) {
         utteranceRef.current.onend = null;
         utteranceRef.current.onerror = null;
@@ -152,11 +177,7 @@ export const RpgMode: React.FC = () => {
   const playFromSentence = useCallback((message: Message, fromIndex: number) => {
     if (typeof window.speechSynthesis === 'undefined' || !message.text) return;
 
-    // It's crucial to cancel any ongoing speech and clean up old handlers
-    // before starting a new speech sequence.
     if (utteranceRef.current) {
-        // By setting onend and onerror to null, we prevent the old utterance's
-        // events from firing after we've moved on.
         utteranceRef.current.onend = null;
         utteranceRef.current.onerror = null;
     }
@@ -181,33 +202,41 @@ export const RpgMode: React.FC = () => {
         setCurrentSentenceIndex(sentenceIndex);
         
         const utterance = new SpeechSynthesisUtterance(sentences[sentenceIndex].text);
-        utterance.lang = 'en-US';
-        utterance.rate = 0.8;
+        
+        const savedVoiceURI = localStorage.getItem('speechSettings_voiceURI');
+        const savedRate = localStorage.getItem('speechSettings_rate');
+        const allVoices = window.speechSynthesis.getVoices();
+
+        if (savedVoiceURI && allVoices.length > 0) {
+            const selectedVoice = allVoices.find(v => v.voiceURI === savedVoiceURI);
+            if (selectedVoice) {
+                utterance.voice = selectedVoice;
+            }
+        }
+
+        if (!utterance.voice) {
+            utterance.lang = 'en-US';
+        }
+
+        utterance.rate = savedRate ? parseFloat(savedRate) : 0.8;
+        
         utteranceRef.current = utterance;
         
         utterance.onend = () => {
-            // Check if this utterance is still the active one before proceeding.
-            // This prevents a race condition where an old onend event triggers a new sentence.
             if (utteranceRef.current === utterance) {
                 playQueue(sentenceIndex + 1);
             }
         };
 
         utterance.onerror = (event) => {
-            // The 'interrupted' error is expected when we intentionally stop one utterance
-            // to start another (e.g., clicking a new sentence). We can safely ignore it.
             if (event.error !== 'interrupted') {
                 console.error("Speech synthesis error:", event.error);
-                // For any other error, it's safer to stop all playback.
                 stopPlayback();
             }
         };
         
         speechSynthesis.speak(utterance);
     };
-
-    // A small delay between `cancel()` and `speak()` is a common workaround
-    // for race conditions in the Web Speech API that can cause 'interrupted' errors.
     setTimeout(() => playQueue(fromIndex), 50);
   }, [getSentences, stopPlayback]);
 
@@ -282,13 +311,13 @@ export const RpgMode: React.FC = () => {
 
   const handleStartAdventure = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!theme.trim()) return;
+    if (!theme.trim() || !difficulty || !numberOfPlayers) return;
 
     setIsLoading(true);
     setIsGameStarted(true);
     closePopup();
 
-    const newChat = createRpgChat();
+    const newChat = createRpgChat(difficulty, numberOfPlayers);
     setChat(newChat);
     setMessages([]);
 
@@ -319,7 +348,7 @@ export const RpgMode: React.FC = () => {
     if (!userInput.trim() || isLoading || !chat) return;
     stopPlayback();
 
-    const userMessage: Message = { id: Date.now().toString(), sender: 'user', text: userInput };
+    const userMessage: Message = { id: Date.now().toString(), sender: 'user', text: userInput, playerIndex: currentPlayerIndex };
     setMessages(prev => [...prev, userMessage]);
     setUserInput('');
     setIsLoading(true);
@@ -335,6 +364,11 @@ export const RpgMode: React.FC = () => {
       correction: correction,
     };
     setMessages(prev => [...prev, aiMessage]);
+
+    if (numberOfPlayers && numberOfPlayers > 1) {
+        setCurrentPlayerIndex(prev => (prev + 1) % numberOfPlayers);
+    }
+    
     setIsLoading(false);
   };
   
@@ -342,9 +376,12 @@ export const RpgMode: React.FC = () => {
       stopPlayback();
       localStorage.removeItem('rpgGameState');
       setSpeakingMessageId(null);
-      setCurrentSentenceIndex(null); // Reset highlight
+      setCurrentSentenceIndex(null);
       setIsGameStarted(false);
       setTheme('');
+      setDifficulty(null);
+      setNumberOfPlayers(null);
+      setCurrentPlayerIndex(0);
       setChat(null);
       setMessages([]);
       setPlayedMessageIds(new Set());
@@ -353,7 +390,7 @@ export const RpgMode: React.FC = () => {
   };
 
   const handleContinueGame = () => {
-    if (!savedGameState) return;
+    if (!savedGameState || !savedGameState.difficulty) return;
 
     const history = savedGameState.messages.map(msg => {
       if (msg.sender === 'user') {
@@ -364,9 +401,12 @@ export const RpgMode: React.FC = () => {
       }
     });
 
-    const newChat = createRpgChat(history);
+    const newChat = createRpgChat(savedGameState.difficulty, savedGameState.numberOfPlayers, history);
     setChat(newChat);
     setTheme(savedGameState.theme);
+    setDifficulty(savedGameState.difficulty);
+    setNumberOfPlayers(savedGameState.numberOfPlayers);
+    setCurrentPlayerIndex(savedGameState.currentPlayerIndex);
     setMessages(savedGameState.messages);
     setIsGameStarted(true);
     setShowContinueScreen(false);
@@ -408,7 +448,7 @@ export const RpgMode: React.FC = () => {
       <div className="flex flex-col items-center justify-center h-full animate-fade-in-up">
         <Shield className="w-16 h-16 text-indigo-400 mb-4"/>
         <h2 className="text-xl font-semibold mb-2 text-slate-200">Welcome Back!</h2>
-        <p className="text-slate-400 mb-6 text-center max-w-md">You have a saved adventure. Would you like to continue?</p>
+        <p className="text-slate-400 mb-6 text-center max-w-md">You have a saved adventure for {savedGameState?.numberOfPlayers} {savedGameState?.numberOfPlayers === 1 ? 'player' : 'players'}. Would you like to continue?</p>
         <div className="w-full max-w-sm flex flex-col gap-3">
             <button
                 onClick={handleContinueGame}
@@ -427,26 +467,60 @@ export const RpgMode: React.FC = () => {
     );
   }
 
-  return (
-    <div className="h-full flex flex-col relative">
-      {selection && (
-        <TranslationPopup 
-          text={selection.text}
-          position={selection.position}
-          onClose={closePopup}
-        />
-      )}
-      {!isGameStarted ? (
-        <div className="flex flex-col items-center justify-center h-full animate-fade-in-up">
-            <Shield className="w-16 h-16 text-indigo-400 mb-4"/>
-            <h2 className="text-xl font-semibold mb-2 text-slate-200">RPG Adventure Mode</h2>
-            <p className="text-slate-400 mb-6 text-center max-w-md">Enter a theme to begin your text-based adventure. The AI will be your guide.</p>
-            <form onSubmit={handleStartAdventure} className="w-full max-w-md flex flex-col gap-3">
+  const renderStartScreen = () => (
+    <div className="flex flex-col items-center justify-center h-full animate-fade-in-up">
+        <Shield className="w-16 h-16 text-indigo-400 mb-4"/>
+        <h2 className="text-xl font-semibold mb-2 text-slate-200">RPG Adventure Mode</h2>
+        
+        {/* Step 1: Difficulty */}
+        <p className="text-slate-400 mb-6 text-center max-w-md">First, choose your English level.</p>
+        <div className="flex justify-center gap-3 mb-6">
+            {(['basic', 'intermediate', 'advanced'] as const).map(level => (
+                <button
+                    key={level}
+                    onClick={() => setDifficulty(level)}
+                    className={`px-4 py-2 rounded-lg font-semibold capitalize transition-colors ${
+                        difficulty === level
+                        ? 'bg-indigo-600 text-white shadow-lg'
+                        : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                    }`}
+                >
+                    {level}
+                </button>
+            ))}
+        </div>
+
+        {/* Step 2: Number of Players */}
+        {difficulty && (
+            <div className="w-full max-w-md animate-fade-in-up text-center">
+                <p className="text-slate-400 mb-4">Next, select the number of players.</p>
+                <div className="flex justify-center gap-3 mb-6">
+                    {[1, 2, 3, 4].map(num => (
+                        <button
+                            key={num}
+                            onClick={() => setNumberOfPlayers(num)}
+                            className={`px-4 py-2 rounded-lg font-semibold transition-colors w-16 ${
+                                numberOfPlayers === num
+                                ? 'bg-indigo-600 text-white shadow-lg'
+                                : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                            }`}
+                        >
+                            {num} Player{num > 1 ? 's' : ''}
+                        </button>
+                    ))}
+                </div>
+            </div>
+        )}
+
+        {/* Step 3: Theme and Start */}
+        {difficulty && numberOfPlayers && (
+            <form onSubmit={handleStartAdventure} className="w-full max-w-md flex flex-col gap-3 animate-fade-in-up">
+                <p className="text-slate-400 mb-2 text-center">Finally, enter a theme to begin your adventure.</p>
                 <input
                     type="text"
                     value={theme}
                     onChange={(e) => setTheme(e.target.value)}
-                    placeholder="e.g., a cyberpunk city heist"
+                    placeholder="e.g., a haunted forest"
                     className="w-full bg-slate-700 text-slate-200 border border-slate-600 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
                 <button
@@ -457,28 +531,35 @@ export const RpgMode: React.FC = () => {
                     Start Adventure
                 </button>
             </form>
-        </div>
-      ) : (
-        <>
-            <div className="mb-4 flex justify-between items-center">
-                <h3 className="text-lg font-semibold text-slate-200 truncate pr-4">Adventure: {theme}</h3>
-                <button onClick={startNewGame} className="text-sm bg-slate-600 hover:bg-slate-500 text-slate-200 font-semibold py-1 px-3 rounded-lg transition-colors flex-shrink-0">
-                    New Game
-                </button>
-            </div>
-            <div ref={chatContainerRef} className="relative flex-grow bg-slate-900/50 rounded-lg p-4 border border-slate-700 overflow-y-auto mb-4">
-                <div className="space-y-4">
-                    {messages.map((msg) => {
-                      const isSpeakingThisMessage = speakingMessageId === msg.id;
-                      const sentences = getSentences(msg.text);
-                      const activeSentence = isSpeakingThisMessage && currentSentenceIndex !== null ? sentences[currentSentenceIndex] : null;
-                      const highlightRange = activeSentence ? { start: activeSentence.start, end: activeSentence.end } : null;
-                      const cursorPosition = activeSentence && speakingState === 'playing' ? activeSentence.start : null;
+        )}
+    </div>
+  );
 
-                      return (
-                        <div key={msg.id} className={`flex items-end gap-2 ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
-                            {msg.sender === 'ai' && renderAudioControls(msg)}
-                            <div className={`px-4 py-2 rounded-xl ${msg.sender === 'user' ? 'bg-indigo-600 text-white max-w-lg' : 'bg-slate-700 text-slate-200 max-w-prose'}`}>
+  const renderGameScreen = () => (
+     <>
+        <div className="mb-4 flex justify-between items-center">
+            <h3 className="text-lg font-semibold text-slate-200 truncate pr-4">Adventure: {theme}</h3>
+            <button onClick={startNewGame} className="text-sm bg-slate-600 hover:bg-slate-500 text-slate-200 font-semibold py-1 px-3 rounded-lg transition-colors flex-shrink-0">
+                New Game
+            </button>
+        </div>
+        <div ref={chatContainerRef} className="relative flex-grow bg-slate-900/50 rounded-lg p-4 border border-slate-700 overflow-y-auto mb-4">
+            <div className="space-y-4">
+                {messages.map((msg) => {
+                  const isSpeakingThisMessage = speakingMessageId === msg.id;
+                  const sentences = getSentences(msg.text);
+                  const activeSentence = isSpeakingThisMessage && currentSentenceIndex !== null ? sentences[currentSentenceIndex] : null;
+                  const highlightRange = activeSentence ? { start: activeSentence.start, end: activeSentence.end } : null;
+                  const cursorPosition = activeSentence && speakingState === 'playing' ? activeSentence.start : null;
+
+                  return (
+                    <div key={msg.id} className={`flex items-end gap-2 ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
+                        {msg.sender === 'ai' && renderAudioControls(msg)}
+                        <div className={`rounded-xl ${msg.sender === 'user' ? 'bg-indigo-600 text-white max-w-lg' : 'bg-slate-700 text-slate-200 max-w-prose'}`}>
+                            {msg.sender === 'user' && typeof msg.playerIndex === 'number' && (
+                                <div className="px-4 pt-2 pb-1 font-bold text-indigo-200 border-b border-indigo-500/50">Player {msg.playerIndex + 1}</div>
+                            )}
+                            <div className="px-4 py-2">
                                 {msg.sender === 'ai' && msg.correction && (
                                     <div className="mb-2 p-2 bg-slate-800/70 border-l-4 border-green-400 rounded">
                                         <p className="text-xs text-slate-400 font-semibold">Correction:</p>
@@ -499,27 +580,32 @@ export const RpgMode: React.FC = () => {
                                 </div>
                             </div>
                         </div>
-                      )
-                    })}
-                    {isLoading && !messages.length && (
-                         <div className="absolute inset-0 flex items-center justify-center"><LoadingSpinner /></div>
-                    )}
-                    {isLoading && messages.length > 0 && (
-                        <div className="flex justify-start">
-                             <div className="max-w-xs lg:max-w-md px-4 py-2 rounded-xl bg-slate-700 text-slate-200">
-                                <LoadingSpinner />
-                             </div>
-                        </div>
-                    )}
-                    <div ref={messagesEndRef} />
-                </div>
+                    </div>
+                  )
+                })}
+                {isLoading && !messages.length && (
+                     <div className="absolute inset-0 flex items-center justify-center"><LoadingSpinner /></div>
+                )}
+                {isLoading && messages.length > 0 && (
+                    <div className="flex justify-start">
+                         <div className="max-w-xs lg:max-w-md px-4 py-2 rounded-xl bg-slate-700 text-slate-200">
+                            <LoadingSpinner />
+                         </div>
+                    </div>
+                )}
+                <div ref={messagesEndRef} />
             </div>
-            <form onSubmit={handleSendMessage} className="flex gap-2">
+        </div>
+        <form onSubmit={handleSendMessage} className="flex flex-col gap-2">
+            {numberOfPlayers && numberOfPlayers > 1 && (
+                <div className="text-center text-sm font-semibold text-indigo-300 animate-fade-in-up">Player {currentPlayerIndex + 1}'s Turn</div>
+            )}
+            <div className="flex gap-2">
                 <input
                     type="text"
                     value={userInput}
                     onChange={(e) => setUserInput(e.target.value)}
-                    placeholder="What do you do?"
+                    placeholder={numberOfPlayers && numberOfPlayers > 1 ? `Player ${currentPlayerIndex + 1}, what do you do?` : "What do you do?"}
                     className="flex-grow bg-slate-700 text-slate-200 border border-slate-600 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     disabled={isLoading}
                 />
@@ -531,9 +617,21 @@ export const RpgMode: React.FC = () => {
                 >
                     <SendHorizonal className="w-5 h-5" />
                 </button>
-            </form>
-        </>
+            </div>
+        </form>
+    </>
+  );
+
+  return (
+    <div className="h-full flex flex-col relative">
+      {selection && (
+        <TranslationPopup 
+          text={selection.text}
+          position={selection.position}
+          onClose={closePopup}
+        />
       )}
+      {!isGameStarted ? renderStartScreen() : renderGameScreen()}
     </div>
   );
 };
