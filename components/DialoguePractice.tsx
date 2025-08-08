@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createDialogueChat } from '../services/geminiService';
 import { LoadingSpinner } from './LoadingSpinner';
-import { SendHorizonal } from './Icons';
+import { SendHorizontal } from './Icons';
 import { TranslationPopup } from './TranslationPopup';
 import { useSelectionTranslation } from '../hooks/useSelectionTranslation';
 import type { Chat } from '@google/genai';
@@ -130,7 +130,7 @@ export const DialoguePractice: React.FC = () => {
                 className="flex items-center justify-center bg-indigo-600 text-white font-semibold rounded-lg px-4 py-2 hover:bg-indigo-700 transition-colors disabled:bg-indigo-400 disabled:cursor-not-allowed"
                 disabled={isLoading || !userInput.trim()}
                 >
-                <SendHorizonal className="w-5 h-5" />
+                <SendHorizontal className="w-5 h-5" />
                 </button>
             </form>
         </>
