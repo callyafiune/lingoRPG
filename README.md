@@ -24,9 +24,10 @@ O aplicativo é dividido em três seções principais:
 
 ## Configuração e Uso
 
-1.  Este projeto é uma aplicação web do lado do cliente e não requer um processo de compilação.
+1.  Instale as dependências do projeto com `npm install`.
 2.  A API do Google Gemini requer uma chave de API. A aplicação espera que esta chave esteja disponível como uma variável de ambiente `process.env.API_KEY`.
-3.  Abra o arquivo `index.html` em um navegador web moderno para executar a aplicação.
+3.  Durante o desenvolvimento, execute `npm run dev` para iniciar o servidor de desenvolvimento do Vite.
+4.  Para gerar uma versão pronta para distribuição, utilize `npm run build`. Os arquivos serão gerados na pasta `dist` e podem ser servidos por qualquer servidor de conteúdo estático.
 
 ## Licença
 
