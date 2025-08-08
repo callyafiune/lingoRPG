@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, type RefObject } from 'react';
 import { useVocabulary } from '../contexts/VocabularyContext';
 
 interface SelectionInfo {
@@ -6,7 +6,7 @@ interface SelectionInfo {
   position: { top: number; left: number };
 }
 
-export const useSelectionTranslation = (containerRef: React.RefObject<HTMLElement>) => {
+export const useSelectionTranslation = (containerRef: RefObject<HTMLElement>) => {
   const [selection, setSelection] = useState<SelectionInfo | null>(null);
   const { addVocabWord, isLoading } = useVocabulary();
   
