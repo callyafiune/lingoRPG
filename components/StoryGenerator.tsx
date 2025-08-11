@@ -4,6 +4,7 @@ import { LoadingSpinner } from './LoadingSpinner';
 import { Feather } from './Icons';
 import { TranslationPopup } from './TranslationPopup';
 import { useSelectionTranslation } from '../hooks/useSelectionTranslation';
+import { useLanguage } from '../contexts/LanguageContext';
 
 export const StoryGenerator: React.FC = () => {
   const [prompt, setPrompt] = useState<string>('');
@@ -11,6 +12,7 @@ export const StoryGenerator: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const storyContainerRef = useRef<HTMLDivElement>(null);
   const { selection, closePopup } = useSelectionTranslation(storyContainerRef);
+  const { learningLang, t } = useLanguage();
 
 
   const handleGenerateStory = async (e: React.FormEvent) => {
@@ -20,7 +22,7 @@ export const StoryGenerator: React.FC = () => {
     setIsLoading(true);
     setStory('');
     closePopup();
-    const generatedStory = await generateStory(prompt);
+    const generatedStory = await generateStory(prompt, learningLang);
     setStory(generatedStory);
     setIsLoading(false);
   };
@@ -39,7 +41,7 @@ export const StoryGenerator: React.FC = () => {
           type="text"
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
-          placeholder="Enter a theme for your story (e.g., a friendly dragon)"
+          placeholder={t('storyGeneratorPlaceholder')}
           className="flex-grow bg-slate-700 text-slate-200 border border-slate-600 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
           disabled={isLoading}
         />
@@ -49,7 +51,7 @@ export const StoryGenerator: React.FC = () => {
           disabled={isLoading || !prompt.trim()}
         >
           <Feather className="w-5 h-5 mr-2" />
-          Generate Story
+          {t('generateStory')}
         </button>
       </form>
 
@@ -57,8 +59,8 @@ export const StoryGenerator: React.FC = () => {
         {isLoading && <div className="absolute inset-0 flex items-center justify-center"><LoadingSpinner /></div>}
         {!isLoading && !story && (
           <div className="text-center text-slate-400 flex flex-col items-center justify-center h-full">
-            <p className="mb-2">Your AI-generated story will appear here.</p>
-            <p className="text-sm">Select any text in the story to translate it.</p>
+            <p className="mb-2">{t('storyGeneratorWillAppear')}</p>
+            <p className="text-sm">{t('storyGeneratorHowToTranslate')}</p>
           </div>
         )}
         {story && (

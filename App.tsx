@@ -1,5 +1,3 @@
-
-
 import React, { useState } from 'react';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
@@ -9,12 +7,14 @@ import { VocabularyReview } from './components/VocabularyReview';
 import { AboutInfo } from './components/AboutInfo';
 import { SettingsModal } from './components/SettingsModal';
 import { Shield, List, Info, Settings } from './components/Icons';
+import { useLanguage } from './contexts/LanguageContext';
 
 type Tab = 'rpg' | 'vocabulary' | 'about';
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>('rpg');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const { t } = useLanguage();
 
   const renderContent = () => {
     switch (activeTab) {
@@ -38,19 +38,19 @@ const App: React.FC = () => {
             <div className="p-4 sm:p-6 border-b border-slate-700">
               <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-2">
                    <TabButton
-                    label="RPG"
+                    label={t('rpg')}
                     icon={<Shield />}
                     isActive={activeTab === 'rpg'}
                     onClick={() => setActiveTab('rpg')}
                   />
                   <TabButton
-                    label="Vocabulary"
+                    label={t('vocabulary')}
                     icon={<List />}
                     isActive={activeTab === 'vocabulary'}
                     onClick={() => setActiveTab('vocabulary')}
                   />
                   <TabButton
-                    label="About"
+                    label={t('about')}
                     icon={<Info />}
                     isActive={activeTab === 'about'}
                     onClick={() => setActiveTab('about')}

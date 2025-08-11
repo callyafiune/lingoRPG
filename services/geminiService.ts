@@ -1,5 +1,5 @@
-
 import { GoogleGenAI, GenerateContentResponse, Chat } from "@google/genai";
+import { supportedLanguages } from "../contexts/LanguageContext";
 
 if (!process.env.API_KEY) {
     throw new Error("API_KEY environment variable is not set.");
@@ -11,12 +11,12 @@ const model = "gemini-2.5-flash";
 // Type for chat history re-hydration
 type ChatHistory = Array<{ role: 'user' | 'model', parts: Array<{ text: string }> }>;
 
-
-export const generateStory = async (prompt: string): Promise<string> => {
+export const generateStory = async (prompt: string, learningLang: string): Promise<string> => {
   try {
+    const learningLangName = supportedLanguages[learningLang as keyof typeof supportedLanguages] || 'English';
     const response: GenerateContentResponse = await ai.models.generateContent({
         model: model,
-        contents: `Generate a short and simple story in English for a beginner language learner based on the theme: "${prompt}". The story should be easy to understand, consisting of 3 to 5 paragraphs.`,
+        contents: `Generate a short and simple story in ${learningLangName} for a beginner language learner based on the theme: "${prompt}". The story should be easy to understand, consisting of 3 to 5 paragraphs.`,
         config: {
             temperature: 0.7,
             topP: 1,
@@ -32,30 +32,33 @@ export const generateStory = async (prompt: string): Promise<string> => {
   }
 };
 
-export const createDialogueChat = (): Chat => {
+export const createDialogueChat = (learningLang: string): Chat => {
+    const learningLangName = supportedLanguages[learningLang as keyof typeof supportedLanguages] || 'English';
     return ai.chats.create({
         model: model,
         config: {
-            systemInstruction: "You are an AI assistant helping a user practice English. Engage in a simple, friendly conversation based on the user's chosen scenario. Keep your responses short, helpful, and easy to understand for a beginner.",
+            systemInstruction: `You are an AI assistant helping a user practice ${learningLangName}. Engage in a simple, friendly conversation based on the user's chosen scenario. Keep your responses short, helpful, and easy to understand for a beginner. All your responses must be in ${learningLangName}.`,
             temperature: 0.8,
         }
     });
 };
 
 const difficultyMap = {
-    basic: "The story and language used should be suitable for a basic English learner (A1/A2 CEFR level). Use simple vocabulary and sentence structures.",
-    intermediate: "The story and language used should be suitable for an intermediate English learner (B1/B2 CEFR level). Use a broader range of vocabulary and more complex sentences.",
-    advanced: "The story and language used should be suitable for an advanced English learner (C1/C2 CEFR level). Use rich, nuanced vocabulary and varied, complex sentence structures."
+    basic: "The story and language used should be suitable for a basic learner (A1/A2 CEFR level). Use simple vocabulary and sentence structures.",
+    intermediate: "The story and language used should be suitable for an intermediate learner (B1/B2 CEFR level). Use a broader range of vocabulary and more complex sentences.",
+    advanced: "The story and language used should be suitable for an advanced learner (C1/C2 CEFR level). Use rich, nuanced vocabulary and varied, complex sentence structures."
 };
 
-export const createRpgChat = (difficulty: 'basic' | 'intermediate' | 'advanced', numberOfPlayers: number, history?: ChatHistory): Chat => {
+export const createRpgChat = (difficulty: 'basic' | 'intermediate' | 'advanced', numberOfPlayers: number, learningLang: string, nativeLang: string, history?: ChatHistory): Chat => {
     const difficultyInstruction = difficultyMap[difficulty];
+    const learningLangName = supportedLanguages[learningLang as keyof typeof supportedLanguages] || 'English';
+
     return ai.chats.create({
         model: model,
         history,
         config: {
             temperature: 0.8,
-            systemInstruction: `You are a Dungeon Master for a tabletop RPG. Your goal is to create a compelling, interactive story for a group of ${numberOfPlayers} players who are learning English.
+            systemInstruction: `You are a Dungeon Master for a tabletop RPG. Your goal is to create a compelling, interactive story for a group of ${numberOfPlayers} players who are learning ${learningLangName}.
 
 **Your Dungeon Master's Guide:**
 
@@ -73,13 +76,14 @@ export const createRpgChat = (difficulty: 'basic' | 'intermediate' | 'advanced',
 - **"Yes, and...":** Build on the players' creative ideas.
 
 **3. Player Interaction & Correction Rule:**
-- **CRITICAL RULE:** After the player submits their action, your response MUST begin with a corrected version of their input if it contains any grammatical or spelling errors. Prefix it with 'Correction: '. The correction should be enclosed in quotes. If there are no errors, do not add this prefix and simply start the story narrative.
+- **CRITICAL RULE:** After the player submits their action, your response MUST begin with a corrected version of their input if it contains any grammatical or spelling errors in ${learningLangName}. Prefix it with 'Correction: '. The correction should be enclosed in quotes. If there are no errors, do not add this prefix and simply start the story narrative.
 - After the optional correction, continue the narrative based on the player's action, and ALWAYS end by prompting the next player for their action.
 
 **4. Language Level:**
-- ${difficultyInstruction}
+- **Language:** ALL your narrative responses MUST be in ${learningLangName}.
+- **Difficulty:** ${difficultyInstruction}
 
-**Example Flow (2 players):**
+**Example Flow (2 players, learning English):**
 - **Your first message:** "You find yourselves in a haunted forest... Player 1, you are a brave knight. Player 2, you are a swift archer. A ghostly sound echoes from a nearby cave. Player 1, what do you do?"
 - **User's input:** "i go to the cave"
 - **Your next response:** "Correction: \\"I go to the cave.\\"\\nYou cautiously approach the dark entrance of the cave. The air grows cold. Player 2, what do you do?"
@@ -91,8 +95,9 @@ Now, begin the adventure based on the player's chosen theme and the number of pl
     });
 };
 
-export const generateStoryFromImage = async (prompt: string, imageBase64: string, mimeType: string): Promise<string> => {
+export const generateStoryFromImage = async (prompt: string, imageBase64: string, mimeType: string, learningLang: string): Promise<string> => {
     try {
+        const learningLangName = supportedLanguages[learningLang as keyof typeof supportedLanguages] || 'English';
         const imagePart = {
             inlineData: {
                 data: imageBase64,
@@ -100,7 +105,7 @@ export const generateStoryFromImage = async (prompt: string, imageBase64: string
             },
         };
         const textPart = {
-            text: `As a creative storyteller for someone learning English, write a short, simple, and imaginative story inspired by this image. The user has provided the following theme to guide you: "${prompt}". Keep the language easy for a beginner.`,
+            text: `As a creative storyteller for someone learning a language, write a short, simple, and imaginative story inspired by this image. The entire story must be in ${learningLangName}. The user has provided the following theme to guide you: "${prompt}". Keep the language easy for a beginner.`,
         };
         const response: GenerateContentResponse = await ai.models.generateContent({
             model: model,
@@ -118,12 +123,15 @@ export const generateStoryFromImage = async (prompt: string, imageBase64: string
     }
 };
 
-export const translateText = async (text: string): Promise<string> => {
+export const translateText = async (text: string, fromLang: string, toLang: string): Promise<string> => {
     if (!text) return "";
     try {
+        const fromLangName = supportedLanguages[fromLang as keyof typeof supportedLanguages] || 'English';
+        const toLangName = supportedLanguages[toLang as keyof typeof supportedLanguages] || 'Portuguese';
+        
         const response: GenerateContentResponse = await ai.models.generateContent({
             model: model,
-            contents: `Translate the following English text to Portuguese: "${text}"`,
+            contents: `Translate the following ${fromLangName} text to ${toLangName}: "${text}"`,
             config: {
                 temperature: 0,
             },

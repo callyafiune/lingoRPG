@@ -1,5 +1,6 @@
 import React, { createContext, useState, useEffect, useContext, ReactNode, useCallback } from 'react';
 import { translateText } from '../services/geminiService';
+import { useLanguage } from './LanguageContext';
 
 export interface VocabWord {
   id: string;
@@ -20,6 +21,7 @@ const VocabularyContext = createContext<VocabularyContextType | undefined>(undef
 export const VocabularyProvider = ({ children }: { children: ReactNode }) => {
   const [vocabWords, setVocabWords] = useState<VocabWord[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const { learningLang, nativeLang } = useLanguage();
 
   // Load words from localStorage on initial render
   useEffect(() => {
@@ -47,7 +49,7 @@ export const VocabularyProvider = ({ children }: { children: ReactNode }) => {
     
     setIsLoading(true);
     try {
-      const translation = await translateText(cleanedWord);
+      const translation = await translateText(cleanedWord, learningLang, nativeLang);
       // Ensure translation is meaningful before adding
       if (translation && translation.toLowerCase() !== cleanedWord.toLowerCase()) {
         const newWord: VocabWord = { id: Date.now().toString(), word: cleanedWord, translation };
@@ -58,7 +60,7 @@ export const VocabularyProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [vocabWords]);
+  }, [vocabWords, learningLang, nativeLang]);
 
   const removeVocabWord = (id: string) => {
     setVocabWords(prev => prev.filter(word => word.id !== id));

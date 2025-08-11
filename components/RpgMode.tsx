@@ -1,7 +1,3 @@
-
-
-
-
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createRpgChat } from '../services/geminiService';
 import { LoadingSpinner } from './LoadingSpinner';
@@ -10,7 +6,7 @@ import { TranslationPopup } from './TranslationPopup';
 import { SpeechHighlighting } from './SpeechHighlighting';
 import { useVocabulary } from '../contexts/VocabularyContext';
 import type { Chat } from '@google/genai';
-import { parseResponse } from '../services/parseResponse';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface Message {
   id: string;
@@ -62,6 +58,7 @@ export const RpgMode: React.FC = () => {
   // Selection and popup state
   const [selection, setSelection] = useState<SelectionInfo | null>(null);
   const { addVocabWord } = useVocabulary();
+  const { learningLang, nativeLang, t } = useLanguage();
 
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -217,7 +214,9 @@ export const RpgMode: React.FC = () => {
         }
 
         if (!utterance.voice) {
-            utterance.lang = 'en-US';
+            const learningLangVoices = allVoices.filter(v => v.lang.startsWith(learningLang));
+            utterance.voice = learningLangVoices.find(v => v.default) || learningLangVoices[0] || null;
+            utterance.lang = learningLang;
         }
 
         utterance.rate = savedRate ? parseFloat(savedRate) : 0.8;
@@ -240,7 +239,7 @@ export const RpgMode: React.FC = () => {
         speechSynthesis.speak(utterance);
     };
     setTimeout(() => playQueue(fromIndex), 50);
-  }, [getSentences, stopPlayback]);
+  }, [getSentences, stopPlayback, learningLang]);
 
   useEffect(() => {
     return () => {
@@ -319,7 +318,7 @@ export const RpgMode: React.FC = () => {
     setIsGameStarted(true);
     closePopup();
 
-    const newChat = createRpgChat(difficulty, numberOfPlayers);
+    const newChat = createRpgChat(difficulty, numberOfPlayers, learningLang, nativeLang);
     setChat(newChat);
     setMessages([]);
 
@@ -334,6 +333,23 @@ export const RpgMode: React.FC = () => {
     setIsLoading(false);
   };
   
+  const parseResponse = (responseText: string): { correction?: string, story: string } => {
+      const correctionPrefix = "Correction: ";
+      const lines = responseText.split('\n');
+      if (lines.length > 0 && lines[0].startsWith(correctionPrefix)) {
+          let correction = lines[0].substring(correctionPrefix.length).trim();
+          if (
+            (correction.startsWith('"') && correction.endsWith('"')) ||
+            (correction.startsWith("'") && correction.endsWith("'"))
+          ) {
+              correction = correction.slice(1, -1);
+          }
+          const story = lines.slice(1).join('\n').trim();
+          return { correction, story };
+      }
+      return { story: responseText };
+  };
+
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!userInput.trim() || isLoading || !chat) return;
@@ -392,7 +408,7 @@ export const RpgMode: React.FC = () => {
       }
     });
 
-    const newChat = createRpgChat(savedGameState.difficulty, savedGameState.numberOfPlayers, history);
+    const newChat = createRpgChat(savedGameState.difficulty, savedGameState.numberOfPlayers, learningLang, nativeLang, history);
     setChat(newChat);
     setTheme(savedGameState.theme);
     setDifficulty(savedGameState.difficulty);
@@ -421,13 +437,13 @@ export const RpgMode: React.FC = () => {
 
     return (
         <div className="flex items-center self-end mb-1 bg-slate-800/80 rounded-full px-2 py-0.5 border border-slate-700">
-            <button onClick={() => playFromSentence(msg, currentSentenceIndex! - 1)} disabled={!canSkip || isFirstSentence} className={controlButtonClass} aria-label="Previous Sentence">
+            <button onClick={() => playFromSentence(msg, currentSentenceIndex! - 1)} disabled={!canSkip || isFirstSentence} className={controlButtonClass} aria-label={t('previousSentence')}>
                 <SkipBack className="w-5 h-5" />
             </button>
-            <button onClick={() => handlePlayPauseClick(msg)} className={controlButtonClass} aria-label={isPlaying ? 'Pause' : 'Play'}>
+            <button onClick={() => handlePlayPauseClick(msg)} className={controlButtonClass} aria-label={isPlaying ? t('pause') : t('play')}>
                 {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
             </button>
-            <button onClick={() => playFromSentence(msg, currentSentenceIndex! + 1)} disabled={!canSkip || isLastSentence} className={controlButtonClass} aria-label="Next Sentence">
+            <button onClick={() => playFromSentence(msg, currentSentenceIndex! + 1)} disabled={!canSkip || isLastSentence} className={controlButtonClass} aria-label={t('nextSentence')}>
                 <SkipForward className="w-5 h-5" />
             </button>
         </div>
@@ -438,20 +454,20 @@ export const RpgMode: React.FC = () => {
     return (
       <div className="flex flex-col items-center justify-center h-full animate-fade-in-up">
         <Shield className="w-16 h-16 text-indigo-400 mb-4"/>
-        <h2 className="text-xl font-semibold mb-2 text-slate-200">Welcome Back!</h2>
-        <p className="text-slate-400 mb-6 text-center max-w-md">You have a saved adventure for {savedGameState?.numberOfPlayers} {savedGameState?.numberOfPlayers === 1 ? 'player' : 'players'}. Would you like to continue?</p>
+        <h2 className="text-xl font-semibold mb-2 text-slate-200">{t('welcomeBack')}</h2>
+        <p className="text-slate-400 mb-6 text-center max-w-md">{t('continueGamePrompt', { count: savedGameState?.numberOfPlayers })}</p>
         <div className="w-full max-w-sm flex flex-col gap-3">
             <button
                 onClick={handleContinueGame}
                 className="w-full flex items-center justify-center bg-indigo-600 text-white font-semibold rounded-lg px-4 py-2 hover:bg-indigo-700 transition-colors"
             >
-                Continue Adventure
+                {t('continueAdventure')}
             </button>
             <button
                 onClick={startNewGame}
                 className="w-full flex items-center justify-center bg-slate-600 text-white font-semibold rounded-lg px-4 py-2 hover:bg-slate-500 transition-colors"
             >
-                Start New Game
+                {t('startNewGame')}
             </button>
         </div>
       </div>
@@ -461,10 +477,10 @@ export const RpgMode: React.FC = () => {
   const renderStartScreen = () => (
     <div className="flex flex-col items-center justify-center h-full animate-fade-in-up">
         <Shield className="w-16 h-16 text-indigo-400 mb-4"/>
-        <h2 className="text-xl font-semibold mb-2 text-slate-200">RPG Adventure Mode</h2>
+        <h2 className="text-xl font-semibold mb-2 text-slate-200">{t('rpgModeTitle')}</h2>
         
         {/* Step 1: Difficulty */}
-        <p className="text-slate-400 mb-6 text-center max-w-md">First, choose your English level.</p>
+        <p className="text-slate-400 mb-6 text-center max-w-md">{t('rpgStep1')}</p>
         <div className="flex justify-center gap-3 mb-6">
             {(['basic', 'intermediate', 'advanced'] as const).map(level => (
                 <button
@@ -476,7 +492,7 @@ export const RpgMode: React.FC = () => {
                         : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
                     }`}
                 >
-                    {level}
+                    {t(level)}
                 </button>
             ))}
         </div>
@@ -484,7 +500,7 @@ export const RpgMode: React.FC = () => {
         {/* Step 2: Number of Players */}
         {difficulty && (
             <div className="w-full max-w-md animate-fade-in-up text-center">
-                <p className="text-slate-400 mb-4">Next, select the number of players.</p>
+                <p className="text-slate-400 mb-4">{t('rpgStep2')}</p>
                 <div className="flex justify-center gap-4 mb-6">
                     {[1, 2, 3, 4].map(num => (
                         <button
@@ -497,7 +513,7 @@ export const RpgMode: React.FC = () => {
                             }`}
                         >
                             <Users className="w-8 h-8 mb-1" />
-                            <span className="text-sm">{num} Player{num > 1 ? 's' : ''}</span>
+                            <span className="text-sm">{t('playerCount', { count: num })}</span>
                         </button>
                     ))}
                 </div>
@@ -507,12 +523,12 @@ export const RpgMode: React.FC = () => {
         {/* Step 3: Theme and Start */}
         {difficulty && numberOfPlayers && (
             <form onSubmit={handleStartAdventure} className="w-full max-w-md flex flex-col gap-3 animate-fade-in-up">
-                <p className="text-slate-400 mb-2 text-center">Finally, enter a theme to begin your adventure.</p>
+                <p className="text-slate-400 mb-2 text-center">{t('rpgStep3')}</p>
                 <input
                     type="text"
                     value={theme}
                     onChange={(e) => setTheme(e.target.value)}
-                    placeholder="e.g., a haunted forest"
+                    placeholder={t('rpgThemePlaceholder')}
                     className="w-full bg-slate-700 text-slate-200 border border-slate-600 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
                 <button
@@ -520,7 +536,7 @@ export const RpgMode: React.FC = () => {
                     className="w-full flex items-center justify-center bg-indigo-600 text-white font-semibold rounded-lg px-4 py-2 hover:bg-indigo-700 transition-colors disabled:bg-indigo-400 disabled:cursor-not-allowed"
                     disabled={!theme.trim()}
                 >
-                    Start Adventure
+                    {t('startAdventure')}
                 </button>
             </form>
         )}
@@ -530,9 +546,9 @@ export const RpgMode: React.FC = () => {
   const renderGameScreen = () => (
      <>
         <div className="mb-4 flex justify-between items-center">
-            <h3 className="text-lg font-semibold text-slate-200 truncate pr-4">Adventure: {theme}</h3>
+            <h3 className="text-lg font-semibold text-slate-200 truncate pr-4">{t('adventureTitle')}: {theme}</h3>
             <button onClick={startNewGame} className="text-sm bg-slate-600 hover:bg-slate-500 text-slate-200 font-semibold py-1 px-3 rounded-lg transition-colors flex-shrink-0">
-                New Game
+                {t('newGame')}
             </button>
         </div>
         <div ref={chatContainerRef} className="relative flex-grow bg-slate-900/50 rounded-lg p-4 border border-slate-700 overflow-y-auto mb-4">
@@ -549,12 +565,12 @@ export const RpgMode: React.FC = () => {
                         {msg.sender === 'ai' && renderAudioControls(msg)}
                         <div className={`rounded-xl ${msg.sender === 'user' ? 'bg-indigo-600 text-white max-w-lg' : 'bg-slate-700 text-slate-200 max-w-prose'}`}>
                             {msg.sender === 'user' && typeof msg.playerIndex === 'number' && (
-                                <div className="px-4 pt-2 pb-1 font-bold text-indigo-200 border-b border-indigo-500/50">Player {msg.playerIndex + 1}</div>
+                                <div className="px-4 pt-2 pb-1 font-bold text-indigo-200 border-b border-indigo-500/50">{t('playerTurnLabel', { player: msg.playerIndex + 1 })}</div>
                             )}
                             <div className="px-4 py-2">
                                 {msg.sender === 'ai' && msg.correction && (
                                     <div className="mb-2 p-2 bg-slate-800/70 border-l-4 border-green-400 rounded">
-                                        <p className="text-xs text-slate-400 font-semibold">Correction:</p>
+                                        <p className="text-xs text-slate-400 font-semibold">{t('correction')}:</p>
                                         <p className="text-sm text-green-300 italic">"{msg.correction}"</p>
                                     </div>
                                 )}
@@ -590,14 +606,14 @@ export const RpgMode: React.FC = () => {
         </div>
         <form onSubmit={handleSendMessage} className="flex flex-col gap-2">
             {numberOfPlayers && numberOfPlayers > 1 && (
-                <div className="text-center text-sm font-semibold text-indigo-300 animate-fade-in-up">Player {currentPlayerIndex + 1}'s Turn</div>
+                <div className="text-center text-sm font-semibold text-indigo-300 animate-fade-in-up">{t('playerTurnLabel', { player: currentPlayerIndex + 1 })}'s Turn</div>
             )}
             <div className="flex gap-2">
                 <input
                     type="text"
                     value={userInput}
                     onChange={(e) => setUserInput(e.target.value)}
-                    placeholder={numberOfPlayers && numberOfPlayers > 1 ? `Player ${currentPlayerIndex + 1}, what do you do?` : "What do you do?"}
+                    placeholder={numberOfPlayers && numberOfPlayers > 1 ? t('playerActionPlaceholder', { player: currentPlayerIndex + 1 }) : t('yourActionPlaceholder')}
                     className="flex-grow bg-slate-700 text-slate-200 border border-slate-600 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     disabled={isLoading}
                 />
@@ -605,7 +621,7 @@ export const RpgMode: React.FC = () => {
                     type="submit"
                     className="flex items-center justify-center bg-indigo-600 text-white font-semibold rounded-lg px-4 py-2 hover:bg-indigo-700 transition-colors disabled:bg-indigo-400 disabled:cursor-not-allowed"
                     disabled={isLoading || !userInput.trim()}
-                    aria-label="Send action"
+                    aria-label={t('sendAction')}
                 >
                     <SendHorizontal className="w-5 h-5" />
                 </button>

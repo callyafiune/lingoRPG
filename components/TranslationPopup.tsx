@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { translateText } from '../services/geminiService';
 import { Languages, X } from './Icons';
 import { LoadingSpinner } from './LoadingSpinner';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface TranslationPopupProps {
   text: string;
@@ -13,17 +14,18 @@ export const TranslationPopup: React.FC<TranslationPopupProps> = ({ text, positi
   const [translation, setTranslation] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const popupRef = useRef<HTMLDivElement>(null);
+  const { learningLang, nativeLang, t } = useLanguage();
 
   useEffect(() => {
     const getTranslation = async () => {
       setIsLoading(true);
-      const result = await translateText(text);
+      const result = await translateText(text, learningLang, nativeLang);
       setTranslation(result);
       setIsLoading(false);
     };
 
     getTranslation();
-  }, [text]);
+  }, [text, learningLang, nativeLang]);
   
   // Close on outside click
   useEffect(() => {
@@ -47,7 +49,7 @@ export const TranslationPopup: React.FC<TranslationPopupProps> = ({ text, positi
       <div className="flex justify-between items-center mb-3">
         <div className="flex items-center space-x-2">
             <Languages className="w-5 h-5 text-indigo-400" />
-            <h3 className="font-semibold text-slate-100">Translation</h3>
+            <h3 className="font-semibold text-slate-100">{t('translation')}</h3>
         </div>
         <button onClick={onClose} className="text-slate-400 hover:text-slate-200 transition-colors">
           <X className="w-5 h-5" />

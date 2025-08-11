@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useVocabulary } from '../contexts/VocabularyContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { List, RefreshCw, Trash2, SkipForward } from './Icons';
 
 export const VocabularyReview: React.FC = () => {
   const { vocabWords, removeVocabWord } = useVocabulary();
+  const { t } = useLanguage();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
 
@@ -52,9 +54,9 @@ export const VocabularyReview: React.FC = () => {
     return (
       <div className="flex flex-col items-center justify-center h-full text-center text-slate-400">
         <List className="w-16 h-16 text-slate-500 mb-4" />
-        <h2 className="text-xl font-semibold text-slate-300">Your Vocabulary List is Empty</h2>
+        <h2 className="text-xl font-semibold text-slate-300">{t('vocabEmptyTitle')}</h2>
         <p className="mt-2 max-w-md">
-          To add words, simply select any single word from the stories or chats. It will be automatically translated and saved here for you to review.
+          {t('vocabEmptyText')}
         </p>
       </div>
     );
@@ -97,20 +99,20 @@ export const VocabularyReview: React.FC = () => {
         <button
           onClick={(e) => { e.stopPropagation(); handleRemove(); }}
           className="flex flex-col items-center justify-center w-28 h-20 bg-slate-800 text-red-400 font-semibold rounded-lg hover:bg-red-500/20 hover:text-red-300 transition-all duration-200"
-          aria-label="Remove word"
+          aria-label={t('removeWord')}
         >
           <Trash2 className="w-6 h-6 mb-1" />
-          <span>Remove</span>
+          <span>{t('remove')}</span>
         </button>
 
         <button
           onClick={(e) => { e.stopPropagation(); handleNext(); }}
           disabled={vocabWords.length <= 1}
           className="flex flex-col items-center justify-center w-28 h-20 bg-slate-800 text-indigo-400 font-semibold rounded-lg hover:bg-indigo-500/20 hover:text-indigo-300 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-slate-800 disabled:hover:text-indigo-400"
-          aria-label="Next word"
+          aria-label={t('nextWord')}
         >
           <SkipForward className="w-6 h-6 mb-1" />
-          <span>Next</span>
+          <span>{t('next')}</span>
         </button>
       </div>
     </div>

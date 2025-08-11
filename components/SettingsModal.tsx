@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X } from './Icons';
+import { useLanguage, supportedLanguages } from '../contexts/LanguageContext';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -7,35 +8,34 @@ interface SettingsModalProps {
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
+  const { 
+    nativeLang, 
+    learningLang, 
+    setNativeLang, 
+    setLearningLang,
+    t
+  } = useLanguage();
+
   // State for speech settings
   const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [selectedVoiceURI, setSelectedVoiceURI] = useState<string>('');
   const [speechRate, setSpeechRate] = useState<number>(0.8);
-  
-  // New state for AI model
-  const [aiModel, setAiModel] = useState<string>('gemini');
 
   // Load saved settings
   useEffect(() => {
     if (isOpen) {
-        // AI Model Setting
-        const savedModel = localStorage.getItem('ai_model');
-        if (savedModel) {
-            setAiModel(savedModel);
-        }
-
         // Speech Synthesis settings
         const populateVoiceList = () => {
             if (typeof window.speechSynthesis === 'undefined') return;
             const voices = window.speechSynthesis.getVoices();
-            const englishVoices = voices.filter(voice => voice.lang.startsWith('en'));
-            setAvailableVoices(englishVoices);
+            const filteredVoices = voices.filter(voice => voice.lang.startsWith(learningLang));
+            setAvailableVoices(filteredVoices);
             
             const savedVoiceURI = localStorage.getItem('speechSettings_voiceURI');
-            if (savedVoiceURI && englishVoices.some(v => v.voiceURI === savedVoiceURI)) {
+            if (savedVoiceURI && filteredVoices.some(v => v.voiceURI === savedVoiceURI)) {
                 setSelectedVoiceURI(savedVoiceURI);
-            } else if (englishVoices.length > 0) {
-                const defaultVoice = englishVoices.find(v => v.name.includes('Google') && v.name.includes('US English')) || englishVoices[0];
+            } else if (filteredVoices.length > 0) {
+                const defaultVoice = filteredVoices.find(v => v.default) || filteredVoices[0];
                 if(defaultVoice) {
                     setSelectedVoiceURI(defaultVoice.voiceURI);
                 }
@@ -50,7 +50,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
         const savedRate = localStorage.getItem('speechSettings_rate');
         setSpeechRate(savedRate ? parseFloat(savedRate) : 0.8);
     }
-  }, [isOpen]);
+  }, [isOpen, learningLang]);
   
   const handleVoiceChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const uri = e.target.value;
@@ -64,12 +64,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
     localStorage.setItem('speechSettings_rate', rate.toString());
   };
   
-  const handleModelChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const model = e.target.value;
-    setAiModel(model);
-    localStorage.setItem('ai_model', model);
-  };
-
   if (!isOpen) return null;
 
   return (
@@ -84,30 +78,45 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
         onClick={e => e.stopPropagation()}
       >
         <div className="flex justify-between items-center p-4 border-b border-slate-700">
-          <h2 className="text-lg font-semibold text-slate-100">Settings</h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-200" aria-label="Close settings">
+          <h2 className="text-lg font-semibold text-slate-100">{t('settings')}</h2>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-200" aria-label={t('closeSettings')}>
             <X className="w-6 h-6" />
           </button>
         </div>
         <div className="p-6 space-y-6">
-            {/* AI Settings */}
+            {/* Language Settings */}
             <div>
-                <h3 className="text-md font-semibold text-slate-200 mb-3">AI Settings</h3>
+                <h3 className="text-md font-semibold text-slate-200 mb-3">{t('languageSettings')}</h3>
                 <div className="space-y-4">
                     <div>
-                        <label htmlFor="model-select" className="block text-sm font-medium text-slate-400 mb-1">
-                            AI Provider
+                        <label htmlFor="native-lang-select" className="block text-sm font-medium text-slate-400 mb-1">
+                            {t('nativeLanguage')}
                         </label>
                         <select
-                            id="model-select"
-                            value={aiModel}
-                            onChange={handleModelChange}
+                            id="native-lang-select"
+                            value={nativeLang}
+                            onChange={(e) => setNativeLang(e.target.value)}
                             className="w-full bg-slate-700 text-slate-200 border border-slate-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         >
-                            <option value="gemini">Gemini</option>
-                            <option value="chatgpt">ChatGPT</option>
+                            {Object.entries(supportedLanguages).map(([code, name]) => (
+                                <option key={code} value={code}>{name}</option>
+                            ))}
                         </select>
-                         <p className="text-xs text-slate-500 mt-2">Note: The API key is securely managed. Model selection will be functional in a future update.</p>
+                    </div>
+                    <div>
+                        <label htmlFor="learning-lang-select" className="block text-sm font-medium text-slate-400 mb-1">
+                            {t('learningLanguage')}
+                        </label>
+                        <select
+                            id="learning-lang-select"
+                            value={learningLang}
+                            onChange={(e) => setLearningLang(e.target.value)}
+                            className="w-full bg-slate-700 text-slate-200 border border-slate-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        >
+                            {Object.entries(supportedLanguages).map(([code, name]) => (
+                                <option key={code} value={code}>{name}</option>
+                            ))}
+                        </select>
                     </div>
                 </div>
             </div>
@@ -117,11 +126,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
 
             {/* Speech Settings */}
             <div>
-                <h3 className="text-md font-semibold text-slate-200 mb-3">Speech Settings</h3>
+                <h3 className="text-md font-semibold text-slate-200 mb-3">{t('speechSettings')}</h3>
                 <div className="space-y-4">
                     <div>
                         <label htmlFor="voice-select" className="block text-sm font-medium text-slate-400 mb-1">
-                            Voice
+                            {t('voice')}
                         </label>
                         <select
                             id="voice-select"
@@ -137,13 +146,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                                     </option>
                                 ))
                             ) : (
-                                <option>Loading voices...</option>
+                                <option>{t('loadingVoices')}</option>
                             )}
                         </select>
                     </div>
                     <div>
                         <label htmlFor="rate-slider" className="block text-sm font-medium text-slate-400 mb-1">
-                            Speech Rate: <span className="font-bold text-slate-200">{speechRate.toFixed(1)}x</span>
+                            {t('speechRate')}: <span className="font-bold text-slate-200">{speechRate.toFixed(1)}x</span>
                         </label>
                         <input
                             id="rate-slider"

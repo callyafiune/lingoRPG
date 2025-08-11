@@ -4,6 +4,7 @@ import { LoadingSpinner } from './LoadingSpinner';
 import { Feather, UploadCloud, X } from './Icons';
 import { TranslationPopup } from './TranslationPopup';
 import { useSelectionTranslation } from '../hooks/useSelectionTranslation';
+import { useLanguage } from '../contexts/LanguageContext';
 
 // A helper function to convert base64 string to a data URL
 const toBase64DataUrl = (base64: string, mimeType: string) => `data:${mimeType};base64,${base64}`;
@@ -18,12 +19,13 @@ export const ImageToStory: React.FC = () => {
     const storyContainerRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const { selection, closePopup } = useSelectionTranslation(storyContainerRef);
+    const { learningLang, t } = useLanguage();
 
     const handleImageChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (file) {
             if (file.size > 4 * 1024 * 1024) { // 4MB limit
-                setError("Image is too large. Please select a file under 4MB.");
+                setError(t('imageTooLargeError'));
                 return;
             }
             setError(null);
@@ -45,10 +47,10 @@ export const ImageToStory: React.FC = () => {
         setError(null);
         closePopup();
         try {
-            const generatedStory = await generateStoryFromImage(prompt, image.base64, image.mimeType);
+            const generatedStory = await generateStoryFromImage(prompt, image.base64, image.mimeType, learningLang);
             setStory(generatedStory);
         } catch (err) {
-            setError("Failed to generate story. Please try again.");
+            setError(t('storyGenerationError'));
             console.error(err);
         } finally {
             setIsLoading(false);
@@ -79,8 +81,8 @@ export const ImageToStory: React.FC = () => {
                     {!image ? (
                         <div className="text-center text-slate-400 p-4">
                             <UploadCloud className="mx-auto h-12 w-12 text-slate-500" />
-                            <p className="mt-2 font-semibold">Upload an image</p>
-                            <p className="text-xs text-slate-500">PNG, JPG, GIF up to 4MB</p>
+                            <p className="mt-2 font-semibold">{t('imageUploadTitle')}</p>
+                            <p className="text-xs text-slate-500">{t('imageUploadSubtitle')}</p>
                         </div>
                     ) : (
                         <>
@@ -93,7 +95,7 @@ export const ImageToStory: React.FC = () => {
                 </div>
                 <div className="flex gap-2">
                     <button onClick={() => fileInputRef.current?.click()} className="flex-1 bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2">
-                        <UploadCloud className="w-5 h-5" /> Choose File
+                        <UploadCloud className="w-5 h-5" /> {t('chooseFile')}
                     </button>
                     <input type="file" ref={fileInputRef} onChange={handleImageChange} accept="image/png, image/jpeg, image/gif" className="hidden" />
                 </div>
@@ -104,7 +106,7 @@ export const ImageToStory: React.FC = () => {
                         type="text"
                         value={prompt}
                         onChange={(e) => setPrompt(e.target.value)}
-                        placeholder="Enter a theme for the story"
+                        placeholder={t('storyThemePlaceholder')}
                         className="w-full bg-slate-700 text-slate-200 border border-slate-600 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         disabled={isLoading || !image}
                     />
@@ -114,7 +116,7 @@ export const ImageToStory: React.FC = () => {
                         disabled={isLoading || !prompt.trim() || !image}
                     >
                         <Feather className="w-5 h-5 mr-2" />
-                        Generate Story
+                        {t('generateStory')}
                     </button>
                 </form>
             </div>
@@ -124,8 +126,8 @@ export const ImageToStory: React.FC = () => {
               {isLoading && <div className="absolute inset-0 flex items-center justify-center"><LoadingSpinner /></div>}
               {!isLoading && !story && (
                 <div className="text-center text-slate-400 flex flex-col items-center justify-center h-full p-4">
-                  <p className="mb-2">Your image-inspired story will appear here.</p>
-                  <p className="text-sm">Upload an image and provide a theme to begin.</p>
+                  <p className="mb-2">{t('imageStoryPlaceholder1')}</p>
+                  <p className="text-sm">{t('imageStoryPlaceholder2')}</p>
                 </div>
               )}
               {story && (

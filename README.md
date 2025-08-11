@@ -1,38 +1,42 @@
-# LingoRPG English AI
+# LingoRPG: The AI Language-Learning Adventure
 
-LingoRPG é um jogo de aventura interativo baseado em texto, projetado para tornar o aprendizado de inglês divertido e imersivo. Embarque em missões épicas onde a IA atua como seu Mestre de Jogo pessoal, guiando-o através de uma história que você molda com suas decisões.
+LingoRPG is an interactive text-based adventure game designed to make learning a new language fun and immersive. Embark on epic quests where an AI acts as your personal Game Master, guiding you through a story that you shape with your decisions, all while practicing your target language.
 
-## Funcionalidades
+## Key Features
 
-- **Mestre de Jogo IA**: Uma IA guia sua história, criando desafios únicos e corrigindo seu inglês em tempo real.
-- **Conversão de Texto em Fala**: Ouça a narração da IA. Clique no botão de play em uma mensagem para ouvi-la em voz alta. Você também pode clicar em qualquer frase para reproduzi-la individualmente.
-- **Construtor de Vocabulário**: Dê um duplo clique em qualquer palavra na história para traduzi-la automaticamente e salvá-la em sua lista de vocabulário pessoal para revisão posterior.
-- **Tradução Instantânea**: Selecione qualquer frase ou sentença para ver uma tradução instantânea para o português.
+- **Multilingual Learning**: Choose your native language and the language you want to learn. The entire app interface adapts to your native tongue, while all learning activities are conducted in your target language.
+- **AI Game Master & Tutor**: In the RPG mode, an AI guides your story, creating unique challenges and correcting your grammar in real-time in the language you're learning.
+- **Text-to-Speech with Highlighting**: Listen to the AI's narration in your target language. Click the play button to hear a full message, or click any sentence to play it individually and see it highlighted.
+- **Integrated Vocabulary Builder**: Double-click any single word in a story to automatically translate it from your learning language to your native language and save it to your personal vocabulary list.
+- **On-the-Fly Translation**: Select any phrase or sentence to see an instant translation from your learning language to your native language.
 
-## Modos da Aplicação
+## Application Tabs
 
-O aplicativo é dividido em três seções principais:
+The application is divided into three main sections:
 
-1.  **RPG**: O coração da aplicação. Comece uma aventura baseada em texto, fornecendo um tema. A IA gerará um mundo para você explorar, e corrigirá sua gramática enquanto você joga.
-2.  **Vocabulary**: Revise as palavras que você salvou. Use os flashcards para testar sua memória da palavra em inglês e sua tradução.
-3.  **About**: Encontre informações sobre o projeto e suas funcionalidades.
+1.  **RPG**: The heart of the application. Start a text-based adventure by providing a theme and choosing a difficulty. The AI will generate a world for you to explore and will correct your grammar as you play.
+2.  **Vocabulary**: Review the words you've saved from your adventures. Use the flashcards to test your memory of the word and its translation.
+3.  **About**: Find information about the project and its features.
 
-## Pilha de Tecnologia
+## Tech Stack
 
 -   **Frontend**: React, TypeScript, Tailwind CSS
--   **API de IA**: Google Gemini API (`@google/genai`)
+-   **AI API**: Google Gemini API (`@google/genai`)
 
-## Configuração e Uso
+## Setup and Usage
 
-1.  Instale as dependências do projeto com `npm install`.
-2.  A API do Google Gemini requer uma chave de API. A aplicação espera que esta chave esteja disponível como uma variável de ambiente `process.env.API_KEY`.
-3.  Durante o desenvolvimento, execute `npm run dev` para iniciar o servidor de desenvolvimento do Vite.
-4.  Para gerar uma versão pronta para distribuição, utilize `npm run build`. Os arquivos serão gerados na pasta `dist` e podem ser servidos por qualquer servidor de conteúdo estático.
+1.  Install the project dependencies with `npm install`.
+2.  The Google Gemini API requires an API key. The application expects this key to be available as an environment variable. Create a `.env` file in the root of the project and add your key:
+    ```
+    GEMINI_API_KEY=YOUR_API_KEY_HERE
+    ```
+3.  During development, run `npm run dev` to start the Vite development server.
+4.  To build a production-ready version, use `npm run build`. The files will be generated in the `dist` folder and can be served by any static content host.
 
-## Licença
+## License
 
 Copyright (c) 2025 Cally Afiune.
 
-Este projeto está licenciado sob a [Licença MIT](https://opensource.org/licenses/MIT).
+This project is licensed under the [MIT License](https://opensource.org/licenses/MIT).
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)

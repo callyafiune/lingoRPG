@@ -5,6 +5,7 @@ import { SendHorizontal } from './Icons';
 import { TranslationPopup } from './TranslationPopup';
 import { useSelectionTranslation } from '../hooks/useSelectionTranslation';
 import type { Chat } from '@google/genai';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface Message {
   sender: 'user' | 'ai';
@@ -28,10 +29,11 @@ export const DialoguePractice: React.FC = () => {
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { selection, closePopup } = useSelectionTranslation(chatContainerRef);
+  const { learningLang, t } = useLanguage();
 
   useEffect(() => {
     if (selectedScenario && !chat) {
-      const newChat = createDialogueChat();
+      const newChat = createDialogueChat(learningLang);
       setChat(newChat);
       setMessages([]);
       setIsLoading(true);
@@ -42,7 +44,7 @@ export const DialoguePractice: React.FC = () => {
         setIsLoading(false);
       });
     }
-  }, [selectedScenario, chat, closePopup]);
+  }, [selectedScenario, chat, closePopup, learningLang]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -80,11 +82,11 @@ export const DialoguePractice: React.FC = () => {
       )}
       {!selectedScenario ? (
         <div className="flex flex-col items-center justify-center h-full">
-            <h2 className="text-xl font-semibold mb-4 text-slate-200">Choose a Scenario</h2>
+            <h2 className="text-xl font-semibold mb-4 text-slate-200">{t('dialoguePickScenario')}</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-md">
                 {scenarios.map(s => (
                     <button key={s} onClick={() => startNewConversation(s)} className="p-4 bg-slate-700 rounded-lg hover:bg-indigo-600 transition-colors text-slate-300 hover:text-white font-medium text-center">
-                        {s}
+                        {t(`dialogueScenario_${s.replace(/\s+/g, '')}` as any)}
                     </button>
                 ))}
             </div>
@@ -92,9 +94,9 @@ export const DialoguePractice: React.FC = () => {
       ) : (
         <>
             <div className="mb-4 flex justify-between items-center">
-                <h3 className="text-lg font-semibold text-slate-200">{selectedScenario}</h3>
+                <h3 className="text-lg font-semibold text-slate-200">{t(`dialogueScenario_${selectedScenario.replace(/\s+/g, '')}` as any)}</h3>
                 <button onClick={() => setSelectedScenario('')} className="text-sm bg-slate-600 hover:bg-slate-500 text-slate-200 font-semibold py-1 px-3 rounded-lg transition-colors">
-                    Change Scenario
+                    {t('dialogueChangeScenario')}
                 </button>
             </div>
             <div ref={chatContainerRef} className="relative flex-grow bg-slate-900/50 rounded-lg p-4 border border-slate-700 overflow-y-auto mb-4">
@@ -121,7 +123,7 @@ export const DialoguePractice: React.FC = () => {
                 type="text"
                 value={userInput}
                 onChange={(e) => setUserInput(e.target.value)}
-                placeholder="Type your message..."
+                placeholder={t('dialoguePlaceholder')}
                 className="flex-grow bg-slate-700 text-slate-200 border border-slate-600 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 disabled={isLoading}
                 />
